@@ -40,15 +40,20 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void readMmpFileToDB(File file) {
         try{
+            //这个是读取文件的组件
             MPPReader mppRead = new MPPReader();
+            //注意，如果在这一步出现了读取异常，肯定是版本不兼容，换个版本试试
             ProjectFile pf = mppRead.read(file);
             System.out.println(file.getName());
+            //从文件中获取的任务对象
             List<Task> tasks = pf.getChildTasks();
             System.out.println("tasks.size() : " + tasks.size());
+            //这个可以不用，这个list只是我用来装下所有的数据，如果不需要可以不使用
             List<Project> proList = new LinkedList<>();
+            //这个是用来封装任务的对象，为了便于区别，初始化批次号，然后所有读取的数据都需要加上批次号
             Project pro = new Project();
             pro.setBatchNum(StringUtils.UUID());//生成批次号UUID
-
+            //这个方法是一个递归方法
             getChildrenTask(tasks.get(0), pro ,proList, 0);
         }catch (MPXJException e) {
             logger.error(e.getMessage());
@@ -60,36 +65,43 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
 
-
+    /**
+     * 这个方法是一个递归
+     * 方法的原理：进行读取父任务，如果下一层任务还是父任务，那么继续调用当前方法，如果到了最后一层，调用另外一个读取底层的方法
+     * @param task
+     * @param project
+     * @param list
+     * @param levelNum
+     */
     @Override
     public void getChildrenTask(Task task, Project project, List<Project> list, int levelNum){
-        if(task.getResourceAssignments().size() == 0){
-            levelNum ++;//层级号需要增加
-            List<Task> tasks = task.getChildTasks();
-            for (int i = 0; i < tasks.size(); i++) {
+        if(task.getResourceAssignments().size() == 0){//这个判断是进行是否是最后一层任务的判断==0说明是父任务
+            levelNum ++;//层级号需要增加，这个只是博主用来记录该层的层级数
+            List<Task> tasks = task.getChildTasks();//继续获取子任务
+            for (int i = 0; i < tasks.size(); i++) {//该循环是遍历所有的子任务
                 if(tasks.get(i).getResourceAssignments().size() == 0){//说明还是在父任务层
                     System.out.println("+++++" + tasks.get(i));
                     Project pro = new Project();
-                    if (project.getProjId() != null){//说明不是第一次读取了
-                        pro.setParentId(project.getProjId());//将上一级目录的Id赋值给下一级
+                    if (project.getProjId() != null){//说明不是第一次读取了，因为如果是第一层，那么还没有进行数据库的添加，没有返回主键Id
+                        pro.setParentId(project.getProjId());//将上一级目录的Id赋值给下一级的ParentId
                     }
-                    pro.setBatchNum(project.getBatchNum());
-                    pro.setImportTime(new Date());
-                    pro.setLevel(levelNum);
-                    pro.setTaskName(tasks.get(i).getName());
-                    pro.setDurationDate(tasks.get(i).getDuration().toString());
-                    pro.setStartDate(tasks.get(i).getStart());
-                    pro.setEndDate(tasks.get(i).getFinish());
-                    pro.setResource(tasks.get(i).getResourceGroup());
-                    this.addProjectInfo(pro);
+                    pro.setBatchNum(project.getBatchNum());//批量号
+                    pro.setImportTime(new Date());//导入时间
+                    pro.setLevel(levelNum);//层级
+                    pro.setTaskName(tasks.get(i).getName());//这个是获取文件中的“任务名称”列的数据
+                    pro.setDurationDate(tasks.get(i).getDuration().toString());//获取的是文件中的“工期”
+                    pro.setStartDate(tasks.get(i).getStart());//获取文件中的 “开始时间”
+                    pro.setEndDate(tasks.get(i).getFinish());//获取文件中的 “完成时间”
+                    pro.setResource(tasks.get(i).getResourceGroup());//获取文件中的 “资源名称”
+                    this.addProjectInfo(pro);//将该条数据添加到数据库，并且会返回主键Id，用做子任务的ParentId,这个需要在mybatis的Mapper中设置
                     pro.setProjId(pro.getProjId());
                     //getResourceAssignment(tasks.get(i),pro,list,levelNum);
-                    getChildrenTask(tasks.get(i), pro,list,levelNum);
+                    getChildrenTask(tasks.get(i), pro,list,levelNum);//继续进行递归，当前保存的只是父任务的信息
                 }else{
                     getChildrenTask(tasks.get(i), project, list, levelNum);
                 }
             }
-        }else{
+        }else{//说明已经到了最底层的子任务了，那么就调用进行最底层数据读取的方法
             if (project.getProjId() != null){
 
                 getResourceAssignment(task, project, list, levelNum);
@@ -108,8 +120,8 @@ public class ProjectServiceImpl implements ProjectService {
         pro.setImportTime(new Date());
         pro.setBatchNum(project.getBatchNum());
         pro.setDurationDate(task.getDuration().toString());
-        pro.setStartDate(rs.getStart());
-        pro.setEndDate(rs.getFinish());
+        pro.setStartDate(rs.getStart());//注意，这个从ResourceAssignment中读取
+        pro.setEndDate(rs.getFinish());//同上
         String resource = "";
         if(list.size() > 1){
             for (int i = 0; i < list.size(); i++) {
@@ -131,7 +143,7 @@ public class ProjectServiceImpl implements ProjectService {
             pro.setResource(resource);
         }
         this.addProjectInfo(pro);
-        pro.setProjId(pro.getProjId());
+        pro.setProjId(pro.getProjId());//将数据保存在数据库中,同样会返回主键
         proList.add(pro);
 
     }

@@ -18,10 +18,10 @@ public class ProjectController {
     private ProjectService projectService;
 
     @ResponseBody
-    @RequestMapping(value = "/add/project-file", method = RequestMethod.POST)
+    @RequestMapping(value = "/add/project-file", method = RequestMethod.GET)
     public ResponseEntity addProjectFile(){
 
-        File file = new File("C:\\Users\\donghua.chen\\Desktop\\项目计划导入模板-2018011201 - 副本.mpp");
+        File file = new File("E:\\工作资料\\小米\\msproject2016\\开办新公司.mpp");
         projectService.readMmpFileToDB(file);
         return ResponseEntity.ok("导入成功!!");
     }
@@ -29,8 +29,8 @@ public class ProjectController {
     @ResponseBody
     @RequestMapping(value = "/project-file/{batchNum}", method = RequestMethod.GET)
     public ResponseEntity writeProjectFile(@PathVariable("batchNum") String batchNum){
-        File file = new File("C:\\Users\\donghua.chen\\Desktop\\开办新公司 - 导出模板.mpp");
-        projectService.writeMppFileToDB("C:\\Users\\donghua.chen\\Desktop",batchNum,file);
+        File file = new File("E:\\工作资料\\小米\\msproject2016\\开办新公司 - 导出模板.mpp");
+        projectService.writeMppFileToDB("E:\\工作资料\\小米\\msproject2016\\",batchNum,file);
         return ResponseEntity.ok("导出成功");
     }
 }
