@@ -16,3 +16,4 @@
 *.class
 /build/
 /springboot-mybatis-demo.iml
+/.idea/workspace.xml
